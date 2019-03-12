@@ -317,6 +317,10 @@ drop1(lmer(cond~treat+(1|ring), data=all))
 
 ```
 
+```{r}
+plot(1)
+```
+
 
 # Delta hormones/mass/condition/treatment
 ```{r delta hormones and mass, eval=FALSE, include=FALSE}
