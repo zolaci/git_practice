@@ -318,7 +318,7 @@ drop1(lmer(cond~treat+(1|ring), data=all))
 ```
 
 ```{r}
-plot(2)
+plot(6)
 ```
 
 
