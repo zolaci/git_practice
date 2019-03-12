@@ -1,0 +1,564 @@
+---
+title: "models"
+author: "Zsófia Tóth"
+date: '2018 december 10 '
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load the data}
+# all.1 data without IGF outlier, all.2 data without cort outlier, all.3 data without IGF and cort outlier
+
+load("/home/zsofci/Asztal/igf_plasticity/plasticity.RData")
+```
+
+
+```{r repeatability of food consuption, eval=FALSE, include=FALSE}
+# we used only 3-3days per week, because on every week we got 2 days of very bad weather which could influence the measurements
+hist(consupt_long$weight)
+consupt_long$ring<-as.factor(consupt_long$ring)
+consupt_long_new<-subset(consupt_long, day %in% c("d3", "d4", "d5", "d8","d9","d10")) 
+hist(consupt_long_new$weight)
+
+library(rptR)
+rep1<-rpt(weight~(1|ring), grname = "ring", data=consupt_long, datatype = "Gaussian", nboot = 0, npermut = 0)
+summary(rep1)
+#plot(rep1, grname = "ring", type = "boot", cex.main = 0.8)
+
+
+se <- function(x) sqrt(var(x)/length(x))
+
+mean(consupt_long_new$weight) # 5.507
+se(consupt_long_new$weight) # 0.052
+
+```
+
+
+# Compare the masses and conditions
+```{r include=FALSE}
+library(lme4)
+library(lmerTest)
+library(emmeans)
+mass.model<-(lmer(mass~treat+ (1|ring), data=masscond))
+anova(mass.model)
+emmeans(mass.model, list(pairwise ~ treat), adjust = "tukey")
+
+cond.model<-(lmer(cond~treat+ (1|ring), data=masscond))
+anova(cond.model)
+emmeans(cond.model, list(pairwise ~ treat), adjust = "tukey")
+```
+
+# Control group
+## Difference between the 2 experimental week
+```{r graphs in control groups}
+library(lme4)
+library(lmerTest)
+
+resigf.cont1<-lmer(resigf~etap+(1|ring), data=t.all[t.all$treat=="C",]) # do not have difference between the 2 week
+summary(resigf.cont1)
+igf.cont1<-lmer(igf1~etap+(1|ring), data=t.all[t.all$treat=="C",])
+summary(igf.cont1)
+#resigf.cont2<-lmer(resigf.2~etap+(1|ring), data=t.all[t.all$resigf<30000 & t.all$treat=="C",]) # do not have difference between the 2 week
+#rescort.cont<-lmer(rescort~etap+(1|ring), data=t.all[t.all$treat=="C",]) # do not have difference between the 2 week
+mass.cont<-lmer(mass~etap+(1|ring), data=t.all[t.all$treat=="C",]) # mass was higher in the second experimental week
+summary(mass.cont)
+cond.cont<-lmer(cond~etap+(1|ring), data=t.all[t.all$treat=="C",]) # condition was higher in the second experimental week
+summary(mass.cont)
+glu.cont<-lmer(glu~etap+(1|ring), data=t.all[t.all$treat=="C",]) # glucose level was higher in the second experimental week
+summary(glu.cont)
+#ua.cont<-lmer(ua~etap+(1|ring), data=t.all[t.all$treat=="C",]) # do not have difference in the 2 experimental week
+ékjdc
+```
+
+# The effect of the treatment
+## IGF-1
+```{r include=FALSE}
+library(MuMIn)
+all$group<-as.factor(all$group)
+
+summary(lmer(igf1~treat*etap*group+(1|ring), data=all))
+igf<-all[complete.cases(all$igf1),]
+
+im1<-lmer(igf1~treat*etap*group+(1|ring), data=igf, na.action=na.fail)
+d.im1<-dredge(im1)
+summary(model.avg(d.im1))
+print(d.im1) # model with lowest AIC and BIC value, do not contain significant p-value
+
+summary(lmer(igf1~treat*etap*group+(1|ring), data=igf))
+summary(lmer(igf1~treat*etap*group+(1|ring), data=igf))
+summary(lmer(igf1~treat*etap+group+(1|ring), data=igf))
+summary(lmer(igf1~treat+etap*group+(1|ring), data=igf))
+summary(lmer(igf1~treat+etap+group+(1|ring), data=igf))
+
+summary(lmer(igf1~treat+etap+(1|ring), data=igf))
+summary(lmer(igf1~treat*etap+(1|ring), data=igf))
+summary(lmer(igf1~treat*group+(1|ring), data=igf))
+summary(lmer(igf1~treat+group+(1|ring), data=igf))
+summary(lmer(igf1~etap*group+(1|ring), data=igf))
+summary(lmer(igf1~etap+group+(1|ring), data=igf))
+
+summary(lmer(igf1~etap+(1|ring), data=igf))
+summary(lmer(igf1~group+(1|ring), data=igf))
+summary(lmer(igf1~treat+(1|ring), data=igf))
+
+# with cort and extraction IGF
+summary(lmer(igf1~treat+group+sex+mass+cond+foodmean+extracted+ecortx+(1|ring), data=all))
+drop1(lmer(igf1~treat+group+sex+mass+cond+foodmean+extracted+ecortx+(1|ring), data=all))
+
+summary(lmer(igf1~treat+group+sex+mass+cond+extracted+ecortx+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+group+sex+mass+cond+extracted+ecortx+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+sex+mass+cond+extracted+ecortx+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+sex+mass+extracted+ecortx+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+sex+mass+extracted+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+sex+mass+inject+(1|ring), data=all))
+summary(lmer(igf1~treat+mass+(1|ring), data=all))
+
+all_noNA<-all[-c(1,28,96),]
+
+all_noNA$fit_igf<-fitted(lmer(igf1~treat+mass+(1|ring), data=all_noNA))
+
+
+#summary(lmer(igf1~treat*round+mass+(1|ring), data=all)) <- try with Pablo
+```
+
+```{r}
+#Initial model, but nothing was significant in this structure
+summary(lmer(igf1~treat*etap*group+(1|ring), data=igf))
+
+#Initial model.2
+summary(lmer(igf1~treat+group+sex+mass+cond+foodmean+extracted+ecortx+(1|ring), data=all))
+
+#Final model
+summary(lmer(igf1~treat+mass+(1|ring), data=all))
+```
+
+
+## Residual IGF-1
+```{r eval=FALSE, include=FALSE}
+summary(lmer(resigf~treat*etap*group+(1|ring), data=all))
+resigf<-all[complete.cases(all$resigf),]
+
+resim1<-lmer(resigf~treat*etap*group+(1|ring), data=resigf, na.action=na.fail)
+d.resim1<-dredge(resim1)
+summary(model.avg(d.resim1))
+print(d.resim1)  # model with lowest AIC and BIC value, do not contain significant p-value
+
+summary(lmer(resigf~treat*etap*group+(1|ring), data=all))
+drop1(lmer(resigf~treat*etap*group+(1|ring), data=all))
+summary(lmer(resigf~treat*etap+group+(1|ring), data=all))
+summary(lmer(resigf~treat+etap*group+(1|ring), data=all))
+
+summary(lmer(resigf~treat+etap+group+(1|ring), data=all))
+
+summary(lmer(resigf~treat+etap+(1|ring), data=all))
+summary(lmer(resigf~treat*etap+(1|ring), data=all))
+summary(lmer(resigf~treat*group+(1|ring), data=all))
+summary(lmer(resigf~treat+group+(1|ring), data=all))
+summary(lmer(resigf~etap*group+(1|ring), data=all))
+summary(lmer(resigf~etap+group+(1|ring), data=all))
+
+summary(lmer(resigf~etap+(1|ring), data=all))
+summary(lmer(resigf~group+(1|ring), data=all))
+summary(lmer(resigf~treat+(1|ring), data=all))
+
+# with other variables
+summary(lmer(extracted~treat+group+sex+mass+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+sex+mass+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+sex+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+cond+foodmean+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+cond+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+cond+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+cond+(1|ring), data=all))
+drop1(lmer(extracted~treat+(1|ring), data=all))
+summary(lmer(extracted~treat+(1|ring), data=all))
+```
+
+```{r}
+summary(lmer(extracted~treat+(1|ring), data=all))
+```
+
+
+## Extracted IGF-1
+```{r eval=FALSE, include=FALSE}
+summary(lmer(extracted~treat*etap*group+(1|ring), data=all))
+extracted<-all[complete.cases(all$extracted),]
+
+em1<-lmer(extracted~treat*etap*group+(1|ring), data=extracted, na.action=na.fail)
+d.em1<-dredge(em1)
+summary(model.avg(d.em1))
+print(d.em1)
+
+summary(lmer(extracted~treat*etap*group+(1|ring), data=all))
+drop1(lmer(extracted~treat*etap*group+(1|ring), data=all))
+summary(lmer(extracted~treat*etap+group+(1|ring), data=all))
+summary(lmer(extracted~treat+etap*group+(1|ring), data=all))
+summary(lmer(extracted~treat+etap+group+(1|ring), data=all))
+summary(lmer(extracted~treat+etap+(1|ring), data=all))
+summary(lmer(extracted~treat*etap+(1|ring), data=all))
+summary(lmer(extracted~treat*group+(1|ring), data=all))
+summary(lmer(extracted~treat+group+(1|ring), data=all))
+summary(lmer(extracted~etap+group+(1|ring), data=all))
+summary(lmer(extracted~etap*group+(1|ring), data=all))
+summary(lmer(extracted~group+(1|ring), data=all))
+summary(lmer(extracted~etap+(1|ring), data=all))
+summary(lmer(extracted~treat+(1|ring), data=all)) #marginally non significant
+
+# with other variables
+summary(lmer(extracted~treat+group+sex+mass+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+drop1(lmer(extracted~treat+group+sex+mass+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+group+sex+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+group+cond+foodmean+igf1+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+group+cond+foodmean+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+group+cond+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+cond+ecortx+(1|ring), data=all))
+summary(lmer(extracted~treat+cond+(1|ring), data=all))
+summary(lmer(extracted~treat+(1|ring), data=all))
+```
+
+```{r}
+summary(lmer(extracted~treat+(1|ring), data=all))
+```
+
+
+## Corticosterone
+```{r}
+cort<-all[complete.cases(all$rescort.nooutlier),]
+cm1<-lmer(rescort.nooutlier~treat*etap*group+(1|ring), data=cort, na.action = na.fail)
+cd<-dredge(cm1)
+print(cd) # best model was not significant
+
+#summary(lmer(rescort.nooutlier~treat*etap*group+(1|ring), data=cort))
+#drop1(lmer(rescort.nooutlier~treat*etap*group+(1|ring), data=cort))
+drop1(lmer(rescort.nooutlier~treat*etap+group+(1|ring), data=cort)) #group was significant
+#drop1(lmer(rescort.nooutlier~treat+etap*group+(1|ring), data=cort))
+drop1(lmer(rescort.nooutlier~treat+etap+group+(1|ring), data=cort)) #group was significant
+
+#drop1(lmer(rescort.nooutlier~treat+etap+(1|ring), data=cort))
+#drop1(lmer(rescort.nooutlier~treat*etap+(1|ring), data=cort))
+#drop1(lmer(rescort.nooutlier~treat*group+(1|ring), data=cort))
+drop1(lmer(rescort.nooutlier~treat+group+(1|ring), data=cort)) # group was significant
+#drop1(lmer(rescort.nooutlier~etap*group+(1|ring), data=cort))
+drop1(lmer(rescort.nooutlier~etap+group+(1|ring), data=cort)) # group was significant
+
+#drop1(lmer(rescort.nooutlier~etap+(1|ring), data=cort))
+drop1(lmer(rescort.nooutlier~group+(1|ring), data=cort)) # significant
+#drop1(lmer(rescort.nooutlier~treat+(1|ring), data=cort))
+
+
+```
+FINAL MODEL:
+Fixed effects:
+            Estimate Std. Error      df t value Pr(>|t|)  
+(Intercept)  -1.3181     0.9439 58.3784  -1.397   0.1679  
+groupTC       2.5767     1.2757 60.4847   2.020   0.0478 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+## Mass
+```{r}
+summary(lmer(mass~treat*etap*group+(1|ring), data=all))
+mm1<-lmer(mass~treat*etap*group+(1|ring), data=all, na.action = na.fail)
+summary(lmer(mass~treat*group+etap+(1|ring), data=all))
+summary(lmer(mass~treat*group+(1|ring), data=all))
+
+library(MuMIn)
+
+d1<-dredge(mm1)
+summary(model.avg(d1))
+print(d1) 
+# best model is if we gave 3 variable: 
+summary(lmer(mass~treat*etap*group+(1|ring), data=all, na.action = na.fail))
+
+#model selection for only 2 variable
+#drop1(lmer(mass~treat*etap+group+(1|ring), data=all))
+#drop1(lmer(mass~treat+etap*group+(1|ring), data=all))
+mm2<-lmer(mass~treat+etap+group+(1|ring), data=all) # only significant
+summary(mm2)
+
+mm3<-lmer(mass~treat+etap+(1|ring), data=all) # only significant
+summary(mm3)
+#drop1(lmer(mass~treat*etap+(1|ring), data=all))
+mm4<-lmer(mass~treat*group+(1|ring), data=all) # only significant
+summary(mm4)
+
+#drop1(lmer(mass~treat+group+(1|ring), data=all))
+#drop1(lmer(mass~etap*group+(1|ring), data=all))
+#drop1(lmer(mass~etap+group+(1|ring), data=all))
+
+mm5<-lmer(mass~etap+(1|ring), data=all) # only siginifcant
+summary(mm5)
+#drop1(lmer(mass~group+(1|ring), data=all))
+mm6<-lmer(mass~treat+(1|ring), data=all) #only significant
+summary(mm6)
+
+#check which is the best model from all significant model
+anova(mm1,mm2,mm3,mm4,mm5,mm6)
+
+```
+
+### CONDITION
+```{r eval=FALSE, include=FALSE}
+summary(lmer(cond~treat+sex+igf1+foodmean+(1|ring), data=all))
+drop1(lmer(cond~treat+sex+igf1+cond+foodmean+(1|ring), data=all))
+
+summary(lmer(cond~treat+sex+foodmean+(1|ring), data=all))
+drop1(lmer(cond~treat+sex+foodmean+(1|ring), data=all))
+
+summary(lmer(cond~treat+foodmean+(1|ring), data=all))
+drop1(lmer(cond~treat+foodmean+(1|ring), data=all))
+
+summary(lmer(cond~treat+(1|ring), data=all))
+drop1(lmer(cond~treat+(1|ring), data=all))
+
+```
+
+
+# Delta hormones/mass/condition/treatment
+```{r delta hormones and mass, eval=FALSE, include=FALSE}
+
+# summary(lm(drescort~dmass, data=all[all$treat=="C",]))
+
+# IGF
+summary(lmer(digf~sex+dmass+foodmean+dcond+prev.mass+etap+group+prev.igf+(1|ring), data=all[all$treat=="C",]))
+
+summary(lmer(digf~sex+dmass+foodmean+dcond+etap+group+(1|ring), data=all[all$treat=="C",]))
+
+summary(lmer(digf~sex*(dmass+foodmean)+etap+group+(1|ring), data=all[all$treat=="C",]))
+
+summary(lmer(digf~prev.igf+(1|ring), data=all[all$treat=="C",])) # I did not find significant effect
+
+# mass
+summary(lmer(dmass~digf+prev.mass+sex*foodmean+etap+group+(1|ring), data=all[all$treat=="C",]))
+summary(lmer(dmass~group+(1|ring), data=all[all$treat=="C",]))
+
+summary(lmer(dmass~prev.mass+(1|ring), data=all[all$treat=="C",])) # forward model selection
+
+
+#condition
+summary(lmer(dcond~prev.mass+sex*(foodmean+digf)+etap+group+(1|ring), data=all[all$treat=="C",]))
+summary(lmer(dcond~group+(1|ring), data=all[all$treat=="C",]))
+
+
+#summary(lm(dresigf~dmass, data=all[all$treat=="C",]))
+#summary(lm(drescort~dresigf, data=all[all$treat=="C",]))
+
+```
+
+# Random slope/intercept
+## IGF-1
+```{r}
+slopeIGFa.2<-lmer(igf1 ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+slopeIGFa.3<-lmer(igf1~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+slopeIGFa.4<-lmer(igf1~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+slopeIGFa.5<-lmer(igf1 ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+slopeIGFa.6<-lmer(igf1 ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,]) 
+slopeIGFa.7<-lmer(igf1~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeIGFa.7  4 1551.8 1561.9 -771.89   1543.8                             
+
+
+slopeIGFa.8<-lmer(igf1~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeIGFa.8  6 1552.9 1568.0 -770.43   1540.9 0.3363      0     <2e-16 ***
+
+slopeIGFa.9<-lmer(igf1 ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all[all$igf1<8000,])
+anova(slopeIGFa.4,slopeIGFa.2, slopeIGFa.3, slopeIGFa.5, slopeIGFa.6, slopeIGFa.7, slopeIGFa.8, slopeIGFa.9)
+```
+
+
+## Extracted IGF-1
+```{r}
+# slopeIGFe.2<-lmer(extracted ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) # singular fit
+slopeIGFe.3<-lmer(extracted~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+slopeIGFe.4<-lmer(extracted~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#slopeIGFe.5<-lmer(extracted ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) # numreically singular
+#slopeIGFe.6<-lmer(extracted ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) # numerically singular
+slopeIGFe.7<-lmer(extracted~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)
+#slopeIGFe.7  4 387.22 395.53 -189.61   379.22     
+
+slopeIGFe.8<-lmer(extracted~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)
+#slopeIGFe.3  6 389.95 402.42 -188.98   377.95 1.2608      2     0.5324
+
+#slopeIGFe.9<-lmer(extracted ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) #singular fit
+#anova(slopeIGFe.4,slopeIGFe.2, slopeIGFe.3, slopeIGFe.5, slopeIGFe.6, slopeIGFe.7, slopeIGFe.8, slopeIGFe.9)
+anova(slopeIGFe.4,slopeIGFe.3,slopeIGFe.7, slopeIGFe.8)
+
+```
+
+
+## residual IGF-1
+```{r}
+library(lmerTest)
+#igf.1<-lmer(resigf.2~cond+rescort+mass.change+sex+order+(1+treat|ring)+(1+treat|etap), data=t.all, 
+#             control = lmerControl(optimizer ="bobyqa")) # with the huge IGF-1 values
+#drop(igf.1) # no significant effect
+
+#igf.2<-lmer(resigf~cond+rescort+mass.change+sex+order+(1+treat|ring)+(1+treat|etap), data=t.all, REML=FALSE, control = lmerControl(
+#                           optimizer ="bobyqa")) # without the huge IGF-1 values
+#drop(igf.2) # no significant effect
+
+
+#SLOPES for only if we have handling time
+library(nlme)
+#slopeIGF<-lmer(resigf ~ treat + (treat|ring)+(ring|etap), control=lmerControl(optimizer="bobyqa"), data=t.all)
+
+slopeIGF.2<-lmer(resigf ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeIGF.3<-lmer(resigf~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeIGF.4<-lmer(resigf~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeIGF.5<-lmer(resigf ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeIGF.6<-lmer(resigf ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all) 
+slopeIGF.7<-lmer(resigf~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeIGF.8<-lmer(resigf~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+#             Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq) 
+# slopeIGF.8  6 1043.4 1056.2 -515.72   1031.4 3.6423      0     <2e-16 ***
+
+slopeIGF.9<-lmer(resigf ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+anova(slopeIGF.4,slopeIGF.2, slopeIGF.3, slopeIGF.5, slopeIGF.6, slopeIGF.7, slopeIGF.8, slopeIGF.9)
+```
+
+## residual CORT
+```{r}
+#cort.1<-lmer(rescort~cond+resigf+mass.change+sex+order+(1+treat|ring)+(1+treat|etap), data=t.all, REML=FALSE, control = lmerControl(
+#                           optimizer ="bobyqa")) # with the huge IGF-1 values
+#drop(cort.1) # no significant effect
+
+#SLOPES
+#slopeCORT<-lmer(rescort ~ treat + (treat|ring)+(ring|etap), control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeCORT.2<-lmer(rescort ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+#slopeCORT.3<-lmer(rescort~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+#slopeCORT.4<-lmer(rescort~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+#slopeCORT.5<-lmer(rescort ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+#slopeCORT.6<-lmer(rescort ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all) 
+slopeCORT.7<-lmer(rescort~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeCORT.7  4 397.39 406.03 -194.70   389.39 
+
+slopeCORT.8<-lmer(rescort~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=t.all)
+#            Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeCORT.8  6 400.83 413.78 -194.42   388.83 0.1441      0     <2e-16 ***
+
+slopeCORT.9<-lmer(rescort ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=t.all)
+#anova(slopeCORT.4,slopeCORT.2, slopeCORT.3, slopeCORT.5, slopeCORT.6, slopeCORT.7, slopeCORT.8, slopeCORT.9)
+anova(slopeCORT.2, slopeCORT.7, slopeCORT.8, slopeCORT.9)
+```
+
+## Mass and condition
+```{r}
+#SLOPE for Mass
+#slopeMASS<-lmer(mass ~ treat + (treat|ring)+(ring|etap), control=lmerControl(optimizer="bobyqa"), data=all) #túl bonyolult modell
+slopeMASS.2<-lmer(mass ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC   logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeMASS.2  7 210.50 228.45  -98.248   196.50 14.0363      1  0.0001793 ***
+
+slopeMASS.3<-lmer(mass~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC   logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeMASS.3  6 204.88 220.27  -96.443   192.88 18.8894      2  7.911e-05 ***
+
+slopeMASS.4<-lmer(mass~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC   logLik deviance  Chisq Chi Df Pr(>Chisq)    
+#slopeMASS.4  8 206.98 227.49  -95.488   190.98  5.5207      1  0.0187925 *  
+
+slopeMASS.5<-lmer(mass ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+slopeMASS.6<-lmer(mass ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) 
+slopeMASS.7<-lmer(mass~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+slopeMASS.8<-lmer(mass~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+slopeMASS.9<-lmer(mass ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+anova(slopeMASS.4,slopeMASS.2, slopeMASS.3, slopeMASS.5, slopeMASS.6, slopeMASS.7, slopeMASS.8, slopeMASS.9)
+
+#SLOPE for condition
+#slopeCOND<-lmer(cond ~ treat + (treat|ring)+(ring|etap), control=lmerControl(optimizer="bobyqa"), data=t.all)
+slopeCOND.2<-lmer(cond ~ treat + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC  logLik deviance   Chisq Chi Df Pr(>Chisq)    
+#slopeCOND.2  7 234.76 252.71 -110.38   220.76 14.4463      1  0.0001442 ***
+
+slopeCOND.3<-lmer(cond~treat*etap+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC  logLik deviance   Chisq Chi Df Pr(>Chisq)    
+#slopeCOND.3  6 231.06 246.44 -109.53   219.06 17.2409      2  0.0001804 ***
+
+slopeCOND.4<-lmer(cond~treat*etap+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+#            Df    AIC    BIC  logLik deviance   Chisq Chi Df Pr(>Chisq)    
+#slopeCOND.4  8 231.49 252.00 -107.74   215.49  5.2694      1  0.0217030 *  
+
+slopeCOND.5<-lmer(cond ~ treat * etap + (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+slopeCOND.6<-lmer(cond ~ treat *etap+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all) 
+slopeCOND.7<-lmer(cond~treat+(1|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+slopeCOND.8<-lmer(cond~treat+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+slopeCOND.9<-lmer(cond ~ treat+ (treat|ring)+(1|etap),control=lmerControl(optimizer="bobyqa"), data=all)
+anova(slopeCOND.4,slopeCOND.2, slopeCOND.3, slopeCOND.5, slopeCOND.6, slopeCOND.7, slopeCOND.8, slopeCOND.9)
+
+```
+
+# Best random structures
+```{r}
+slopeIGF.end<-lmer(igf1~treat*(sex+mass+foodmean)+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all)
+summary(lmer(igf1~treat+mass+(treat|ring), control=lmerControl(optimizer="bobyqa"), data=all))
+
+```
+
+# Effect of previous injection
+```{r igf and food consuption}
+summary(lmer(digf~inject+(1|ring), data=all[all$group=="CT",]))
+summary(lmer(digf~group*inject+(1|ring), data=all))
+
+#summary(lmer(extracted~inject+(1|ring), data=all))
+#summary(lmer(igf1~inject+(1|ring), data=all))
+#summary(lmer(rescort.nooutlier~inject+(1|ring), data=all))
+#summary(lmer(mass~inject+(1|ring), data=all))
+```
+
+# repeatability in hormones
+## IGF-1
+```{r igf}
+library(rptR)
+igfrep<-rpt(igf1~(1|ring), grname = c("ring"), data=all[all$treat=="C",], datatype = "Gaussian", nboot = 0, npermut = 0)
+summary(igfrep)
+#plot(igfrep, grname = "ring", type = "boot", cex.main = 0.8)
+
+igfrept<-rpt(igf1~(1|ring) + treat, grname = c("ring"), data=all, datatype = "Gaussian", nboot = 0, npermut = 0)
+summary(igfrept)
+#plot(igfrept, grname = "ring", type = "boot", cex.main = 0.8)
+```
+
+## residual IGF-1
+```{r resigf}
+library(rptR)
+resigfrep<-rpt(resigf~(1|ring), grname = c("ring"), data=all[all$treat=="C",], datatype = "Gaussian", nboot = 0, npermut = 0)
+#plot(igfrep, grname = "ring", type = "boot", cex.main = 0.8)
+summary(resigfrep)
+
+resigfrept<-rpt(resigf~(1|ring) + treat, grname = c("ring"), data=all, datatype = "Gaussian", nboot = 0, npermut = 0)
+summary(resigfrept)
+#plot(igfrept, grname = "ring", type = "boot", cex.main = 0.8)
+```
+
+## extracted IGF-1
+```{r extr igf}
+library(rptR)
+extractedrep<-rpt(extracted~(1|ring), grname = c("ring"), data=all[all$treat=="C",], datatype = "Gaussian", nboot = 0, npermut = 0)
+#plot(igfrep, grname = "ring", type = "boot", cex.main = 0.8)
+summary(extractedrep)
+
+extractedrept<-rpt(extracted~(1|ring) + treat, grname = c("ring"), data=all, datatype = "Gaussian", nboot = 0, npermut = 0)
+#plot(igfrept, grname = "ring", type = "boot", cex.main = 0.8)
+summary(extractedrept)
+```
+
+## CORT
+```{r cort}
+library(rptR)
+rescortrep<-rpt(rescort.nooutlier~(1|ring), grname = c("ring"), data=all[all$treat=="C",], datatype = "Gaussian", nboot = 0, npermut = 0)
+#plot(igfrep, grname = "ring", type = "boot", cex.main = 0.8)
+summary(rescortrep)
+
+rescortrept<-rpt(rescort.nooutlier~(1|ring) + treat, grname = c("ring"), data=all, datatype = "Gaussian", nboot = 0, npermut = 0)
+#plot(igfrept, grname = "ring", type = "boot", cex.main = 0.8)
+summary(rescortrept)
+```
+
